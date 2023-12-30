@@ -3,14 +3,17 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Unity.VisualScripting;
 using UnityEditor;
+using UnityEditor.TerrainTools;
 using UnityEngine;
 
 public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate = 관성에 의한 회전 방지
 {
     public float moveSpeed;
     public float jumpPower;
+
     public GameObject[] weapons;
     public bool[] hasWeapons;
+    public GameObject[] grenades;
 
     float hAxis;
     float vAxis;
@@ -20,6 +23,15 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
     bool sDown1;
     bool sDown2;
     bool sDown3;
+
+    public int ammo;
+    public int coin;
+    public int health;
+    public int hasGrenades;
+    public int maxAmmo;
+    public int maxCoin;
+    public int maxHealth;
+    public int maxHasGrenades;
 
     bool isJump = false;
     bool isDodge = false;
@@ -166,6 +178,40 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
         if(other.gameObject.tag == "Floor"){
             anim.SetBool("isJump", false);
             isJump = false;
+        }
+    }
+
+    void OnTriggerEnter(Collider other) {
+        if(other.tag == "Item"){
+            Item item = other.GetComponent<Item>();
+
+            switch(item.itemType){
+                case Item.Type.Ammo:
+                    ammo += item.value;
+                    if (ammo > maxAmmo)
+                        ammo = maxAmmo;
+                    break;
+                case Item.Type.Coin:
+                    coin += item.value;
+                    if (coin > maxCoin)
+                        coin = maxCoin;
+                    break;
+                case Item.Type.Grenade:
+                    if (hasGrenades == maxHasGrenades)
+                        return;
+                    grenades[hasGrenades].SetActive(true);
+                    hasGrenades += item.value;
+                    if (hasGrenades > maxHasGrenades)
+                        hasGrenades = maxHasGrenades;
+                    break;
+                case Item.Type.Heart:
+                    health += item.value;
+                    if (health > maxHealth)
+                        health = maxHealth;
+                    break;
+            }
+
+            Destroy(other.gameObject);
         }
     }
 
