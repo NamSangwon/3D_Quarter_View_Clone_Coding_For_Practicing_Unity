@@ -4839,7 +4839,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4903006500847906338}
-  - component: {fileID: 8800564965752802184}
+  - component: {fileID: 990428501735022}
   - component: {fileID: 7907159499534738752}
   - component: {fileID: 3878388993847275204}
   - component: {fileID: 8428758321891142003}
@@ -4868,7 +4868,7 @@ Transform:
   - {fileID: 2249830402697287719}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!135 &8800564965752802184
+--- !u!135 &990428501735022
 SphereCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -4888,7 +4888,7 @@ SphereCollider:
   m_Enabled: 1
   serializedVersion: 3
   m_Radius: 0.5
-  m_Center: {x: 0, y: -1, z: 0}
+  m_Center: {x: 0, y: 0, z: 0}
 --- !u!135 &7907159499534738752
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -4909,7 +4909,7 @@ SphereCollider:
   m_Enabled: 1
   serializedVersion: 3
   m_Radius: 3
-  m_Center: {x: 0, y: -1, z: 0}
+  m_Center: {x: 0, y: 2, z: 0}
 --- !u!54 &3878388993847275204
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -4935,7 +4935,7 @@ Rigidbody:
   m_UseGravity: 1
   m_IsKinematic: 0
   m_Interpolate: 0
-  m_Constraints: 126
+  m_Constraints: 112
   m_CollisionDetection: 0
 --- !u!114 &8428758321891142003
 MonoBehaviour:
@@ -4949,7 +4949,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b76f991d124d9954b9efc572e23d6e36, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  itemType: 0
+  itemType: 4
   value: 2
 --- !u!1 &3266592365675469777
 GameObject:

@@ -5,6 +5,7 @@ using Unity.VisualScripting;
 using UnityEditor;
 using UnityEditor.TerrainTools;
 using UnityEngine;
+using UnityEngine.Timeline;
 
 public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate = 관성에 의한 회전 방지
 {
@@ -14,6 +15,8 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
     public GameObject[] weapons;
     public bool[] hasWeapons;
     public GameObject[] grenades;
+    public Camera followCamera;
+    public GameObject grenadeObj;
 
     float hAxis;
     float vAxis;
@@ -23,6 +26,9 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
     bool sDown1;
     bool sDown2;
     bool sDown3;
+    bool fDown;
+    bool rDown;
+    bool gDown;
 
     public int ammo;
     public int coin;
@@ -36,6 +42,9 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
     bool isJump = false;
     bool isDodge = false;
     bool isSwap = false;
+    bool isFireReady = true;
+    bool isReload = false;
+    bool isBorder;
 
     Vector3 moveVec;
     Vector3 dodgeVec;
@@ -43,8 +52,9 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
     Animator anim;
 
     GameObject nearObject;
-    GameObject equipWeapon;
+    Weapon equipWeapon;
     int equipWeaponIndex = -1;
+    float fireDelay = 0;
 
     void Awake() {
         anim = GetComponentInChildren<Animator>();
@@ -64,6 +74,9 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
         Move();
         Turn();
         Jump();
+        Reload();
+        Grenade();
+        Attack();
         Dodge();
         Swap();
         Interaction();
@@ -74,6 +87,9 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
         vAxis = Input.GetAxisRaw("Vertical");
         wDown = Input.GetButton("Walk");
         jDown = Input.GetButtonDown("Jump");
+        fDown = Input.GetButton("Fire1");
+        gDown = Input.GetButtonDown("Fire2");
+        rDown = Input.GetButtonDown("Reload");
         iDown = Input.GetButtonDown("Interaction");
         sDown1 = Input.GetButtonDown("Swap1");
         sDown2 = Input.GetButtonDown("Swap2");
@@ -86,21 +102,35 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
         if(isDodge) // 회피 시 이동 방향 변경 불가
             moveVec = dodgeVec;
 
-        if (isSwap) // 무기 스왑 시 이동 불가
+        if (isSwap || !isFireReady || isReload) // 무기 스왑 or 사용 or 재장전 시 이동 불가
             moveVec = Vector3.zero;
 
-        if (wDown)
-            transform.position += moveVec * moveSpeed * Time.deltaTime * 0.3f;
-        else
-            transform.position += moveVec * moveSpeed * Time.deltaTime;
-        // transform.position += moveVec * moveSpeed * Time.deltaTime * (wDown ? 0.3f : 1f); // 삼항 연산자로 if문 처리
+        if (!isBorder){        
+            if (wDown)
+                transform.position += moveVec * moveSpeed * Time.deltaTime * 0.3f;
+            else
+                transform.position += moveVec * moveSpeed * Time.deltaTime;
+            // transform.position += moveVec * moveSpeed * Time.deltaTime * (wDown ? 0.3f : 1f); // 삼항 연산자로 if문 처리
+        }
 
         anim.SetBool("isRun", moveVec != Vector3.zero);
         anim.SetBool("isWalk", wDown);
     }
 
     void Turn(){
+        // 1. 키보드에 의한 플레이어 회전
         transform.LookAt(transform.position + moveVec); // 나아가는 방향으로 플레이어 회전
+
+        // 2. 마우스 클릭에 의한 플레이어 회전 (RayCastHit의 마우스 클릭 위치를 활용하여 회전을 구현)
+        if (fDown){
+            Ray ray = followCamera.ScreenPointToRay(Input.mousePosition);
+            RaycastHit rayHit;
+            if(Physics.Raycast(ray, out rayHit, 100)){ // Raycast()를 통해 rayHit 값 업데이트
+                Vector3 nextVec = rayHit.point - transform.position;
+                nextVec.y = 0; // 플레이어 기울어짐 방지 (ex. 벽에 마우스 클릭 시 플레이어가 기울어짐)
+                transform.LookAt(transform.position + nextVec);
+            }
+        }
     }
 
     void Jump(){ // jump = 움직이지 않을 때, 점프 (회피랑 연속 사용 불가)
@@ -109,6 +139,65 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
             anim.SetBool("isJump", true);
             anim.SetTrigger("doJump");
             isJump = true;
+        }
+    }
+
+    void Reload(){
+        if(equipWeapon == null)
+            return;
+        if (equipWeapon.attackType == Weapon.Type.Melee)
+            return;
+        if (ammo <= 0)
+            return;
+
+        if(rDown && !isJump && !isDodge && !isSwap && isFireReady){
+            anim.SetTrigger("doReload");
+            isReload = true;
+            Invoke("ReloadOut", 3f);
+        }
+    }
+
+    void ReloadOut(){
+        int reAmmo = ammo < equipWeapon.maxAmmo ? ammo : equipWeapon.maxAmmo;
+        equipWeapon.curAmmo = reAmmo;
+        ammo -= reAmmo;
+        isReload = false;
+    }
+
+    void Grenade(){
+        if (hasGrenades <= 0)
+            return;
+
+        if(gDown && !isReload && !isSwap){
+            Ray ray = followCamera.ScreenPointToRay(Input.mousePosition);
+            RaycastHit rayHit;
+            if(Physics.Raycast(ray, out rayHit, 100)){ // Raycast()를 통해 rayHit 값 업데이트
+                Vector3 throwVec = rayHit.point - transform.position;
+                throwVec.y = 12; // 플레이어 기울어짐 방지 (ex. 벽에 마우스 클릭 시 플레이어가 기울어짐)
+
+                // 수류탄 투척
+                GameObject instantGrenade = Instantiate(grenadeObj, transform.position, transform.rotation);
+                Rigidbody rigidGrednade = instantGrenade.GetComponent<Rigidbody>();
+                rigidGrednade.AddForce(throwVec, ForceMode.Impulse);
+                rigidGrednade.AddTorque(Vector3.back * 10, ForceMode.Impulse);
+
+                hasGrenades--;
+                grenades[hasGrenades].SetActive(false);
+            }
+        }
+    }
+
+    void Attack(){
+        if(equipWeapon == null) 
+            return;
+
+        fireDelay += Time.deltaTime;
+        isFireReady = equipWeapon.rate < fireDelay;
+
+        if (fDown && isFireReady && !isDodge && !isSwap){
+            equipWeapon.Use();
+            anim.SetTrigger(equipWeapon.attackType == Weapon.Type.Melee ? "doSwing" : "doShot");
+            fireDelay = 0;
         }
     }
 
@@ -144,11 +233,11 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
 
         if((sDown1 || sDown2 || sDown3) && !isJump && !isDodge){
             if (equipWeapon != null)
-                equipWeapon.SetActive(false);
+                equipWeapon.gameObject.SetActive(false);
 
             equipWeaponIndex = weaponIndex;
-            equipWeapon = weapons[equipWeaponIndex];
-            equipWeapon.SetActive(true);
+            equipWeapon = weapons[equipWeaponIndex].GetComponent<Weapon>();
+            equipWeapon.gameObject.SetActive(true);
 
             anim.SetTrigger("doSwap");
 
@@ -213,6 +302,20 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
 
             Destroy(other.gameObject);
         }
+    }
+
+    void FreezeRotation(){ // 플레이어 물체 충돌 시 자동 회전 제어
+        rigid.angularVelocity = Vector3.zero; 
+    }
+
+    void StopToWall(){ // 플레이어 벽 뚫기 방지
+        Debug.DrawRay(transform.position, transform.forward * 5, Color.green); // Ray Debugging 하기
+        isBorder = Physics.Raycast(transform.position, transform.forward, 5, LayerMask.GetMask("Wall")); // 5만큼의 길이에서 Wall 감지
+    }
+
+    void FixedUpdate() {
+        FreezeRotation();
+        StopToWall();
     }
 
     void OnTriggerStay(Collider other) {
