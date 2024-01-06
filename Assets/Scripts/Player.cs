@@ -45,11 +45,13 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
     bool isFireReady = true;
     bool isReload = false;
     bool isBorder;
+    bool isDamage;
 
     Vector3 moveVec;
     Vector3 dodgeVec;
     Rigidbody rigid;
     Animator anim;
+    MeshRenderer[] meshes;
 
     GameObject nearObject;
     Weapon equipWeapon;
@@ -59,6 +61,7 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
     void Awake() {
         anim = GetComponentInChildren<Animator>();
         rigid = GetComponent<Rigidbody>();
+        meshes = GetComponentsInChildren<MeshRenderer>();
     }
 
     // Start is called before the first frame update
@@ -302,10 +305,34 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
 
             Destroy(other.gameObject);
         }
+        else if(other.tag == "EnemyBullet"){
+            if(!isDamage){
+                Bullet enemyBullet = other.GetComponent<Bullet>();
+                health -= enemyBullet.damage;
+                if (other.GetComponent<Rigidbody>() != null) {// 근접 공격과 원거리 공격 구분
+                    Destroy(other.gameObject);
+                }
+                StartCoroutine(onDamage());
+            }
+        }
+    }
+
+    IEnumerator onDamage(){ // 피격 후 1초 간 무적 (무적 시 플레이어 노랑색)
+        isDamage = true;
+
+        foreach (MeshRenderer mesh in meshes){
+            mesh.material.color = Color.yellow;
+        }
+        yield return new WaitForSeconds(1f);
+
+        isDamage = false;
+        foreach (MeshRenderer mesh in meshes){
+            mesh.material.color = Color.white;
+        }
     }
 
     void FreezeRotation(){ // 플레이어 물체 충돌 시 자동 회전 제어
-        rigid.angularVelocity = Vector3.zero; 
+        rigid.angularVelocity = Vector3.zero;
     }
 
     void StopToWall(){ // 플레이어 벽 뚫기 방지

@@ -6,6 +6,7 @@ using UnityEngine;
 public class Bullet : MonoBehaviour
 {
     public int damage;
+    public bool isMelee;
 
     private void OnCollisionEnter(Collision other) {
         if(other.gameObject.tag == "Floor"){ // 탄피가 땅에 떨어지면 3초 뒤 제거
@@ -14,7 +15,7 @@ public class Bullet : MonoBehaviour
     }
 
     void OnTriggerEnter(Collider other) {
-        if(other.gameObject.tag == "Wall"){ // 총알이 벽에 부딪히면 제거
+        if(!isMelee && other.gameObject.tag == "Wall"){ // 총알이 벽에 부딪히면 제거
             Destroy(gameObject);
         }
     }
