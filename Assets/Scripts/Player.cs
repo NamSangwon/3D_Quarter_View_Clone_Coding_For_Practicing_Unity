@@ -309,26 +309,36 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
             if(!isDamage){
                 Bullet enemyBullet = other.GetComponent<Bullet>();
                 health -= enemyBullet.damage;
-                if (other.GetComponent<Rigidbody>() != null) {// 근접 공격과 원거리 공격 구분
-                    Destroy(other.gameObject);
-                }
-                StartCoroutine(onDamage());
+                
+                bool isBossAtk = other.name == "BossMeleeArea";
+                StartCoroutine(onDamage(isBossAtk));
+            }
+            
+            if (other.GetComponent<Rigidbody>() != null) {// 근접 공격과 원거리 공격 구분
+                Destroy(other.gameObject);
             }
         }
     }
 
-    IEnumerator onDamage(){ // 피격 후 1초 간 무적 (무적 시 플레이어 노랑색)
+    IEnumerator onDamage(bool isBossAtk){ // 피격 후 1초 간 무적 (무적 시 플레이어 노랑색)
         isDamage = true;
 
         foreach (MeshRenderer mesh in meshes){
             mesh.material.color = Color.yellow;
         }
+
+        if (isBossAtk)
+            rigid.AddForce(transform.forward * -25, ForceMode.Impulse);
+
         yield return new WaitForSeconds(1f);
 
         isDamage = false;
         foreach (MeshRenderer mesh in meshes){
             mesh.material.color = Color.white;
         }
+
+        if (isBossAtk)
+            rigid.velocity = Vector3.zero;
     }
 
     void FreezeRotation(){ // 플레이어 물체 충돌 시 자동 회전 제어

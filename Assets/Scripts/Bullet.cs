@@ -7,9 +7,10 @@ public class Bullet : MonoBehaviour
 {
     public int damage;
     public bool isMelee;
+    public bool isRock;
 
     private void OnCollisionEnter(Collision other) {
-        if(other.gameObject.tag == "Floor"){ // 탄피가 땅에 떨어지면 3초 뒤 제거
+        if(!isRock && other.gameObject.tag == "Floor"){ // 탄피가 땅에 떨어지면 3초 뒤 제거
             Destroy(gameObject, 3); 
         }
     }
