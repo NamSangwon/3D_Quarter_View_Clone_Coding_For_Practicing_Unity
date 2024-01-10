@@ -33,6 +33,7 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
     public int ammo;
     public int coin;
     public int health;
+    public int score;
     public int hasGrenades;
     public int maxAmmo;
     public int maxCoin;
@@ -46,6 +47,7 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
     bool isReload = false;
     bool isBorder;
     bool isDamage;
+    bool isShop;
 
     Vector3 moveVec;
     Vector3 dodgeVec;
@@ -54,7 +56,7 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
     MeshRenderer[] meshes;
 
     GameObject nearObject;
-    Weapon equipWeapon;
+    public Weapon equipWeapon;
     int equipWeaponIndex = -1;
     float fireDelay = 0;
 
@@ -62,6 +64,8 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
         anim = GetComponentInChildren<Animator>();
         rigid = GetComponent<Rigidbody>();
         meshes = GetComponentsInChildren<MeshRenderer>();
+
+        PlayerPrefs.SetInt("MaxScore", 112500);
     }
 
     // Start is called before the first frame update
@@ -137,7 +141,7 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
     }
 
     void Jump(){ // jump = 움직이지 않을 때, 점프 (회피랑 연속 사용 불가)
-        if (jDown && moveVec == Vector3.zero && !isJump && !isDodge && !isSwap){
+        if (jDown && moveVec == Vector3.zero && !isJump && !isDodge && !isSwap && !isShop){
             rigid.AddForce(Vector3.up * jumpPower, ForceMode.Impulse); // 즉발적인 힘 = ForceMode.Impulse
             anim.SetBool("isJump", true);
             anim.SetTrigger("doJump");
@@ -153,7 +157,7 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
         if (ammo <= 0)
             return;
 
-        if(rDown && !isJump && !isDodge && !isSwap && isFireReady){
+        if(rDown && !isJump && !isDodge && !isSwap && isFireReady && !isShop){
             anim.SetTrigger("doReload");
             isReload = true;
             Invoke("ReloadOut", 3f);
@@ -171,7 +175,7 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
         if (hasGrenades <= 0)
             return;
 
-        if(gDown && !isReload && !isSwap){
+        if(gDown && !isReload && !isSwap && !isShop){
             Ray ray = followCamera.ScreenPointToRay(Input.mousePosition);
             RaycastHit rayHit;
             if(Physics.Raycast(ray, out rayHit, 100)){ // Raycast()를 통해 rayHit 값 업데이트
@@ -197,7 +201,7 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
         fireDelay += Time.deltaTime;
         isFireReady = equipWeapon.rate < fireDelay;
 
-        if (fDown && isFireReady && !isDodge && !isSwap){
+        if (fDown && isFireReady && !isDodge && !isSwap && !isShop){
             equipWeapon.Use();
             anim.SetTrigger(equipWeapon.attackType == Weapon.Type.Melee ? "doSwing" : "doShot");
             fireDelay = 0;
@@ -205,7 +209,7 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
     }
 
     void Dodge(){ // dodge = 움직일 땐, 회피 (점프랑 연속 사용 불가)
-        if (jDown && moveVec != Vector3.zero && !isDodge && !isJump && !isSwap){
+        if (jDown && moveVec != Vector3.zero && !isDodge && !isJump && !isSwap && !isShop){
             dodgeVec = moveVec;
             moveSpeed *= 2;
             anim.SetTrigger("doDodge");
@@ -234,7 +238,7 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
         if (sDown2) weaponIndex = 1;
         if (sDown3) weaponIndex = 2;
 
-        if((sDown1 || sDown2 || sDown3) && !isJump && !isDodge){
+        if((sDown1 || sDown2 || sDown3) && !isJump && !isDodge && !isShop){
             if (equipWeapon != null)
                 equipWeapon.gameObject.SetActive(false);
 
@@ -262,6 +266,11 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
                 hasWeapons[weaponIndex] = true;
 
                 Destroy(nearObject);
+            }
+            else if (nearObject.tag == "Shop") {
+                Shop shop = nearObject.GetComponent<Shop>();
+                shop.Enter(this);
+                isShop = true;
             }
         }
     }
@@ -356,14 +365,19 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
     }
 
     void OnTriggerStay(Collider other) {
-        if(other.tag == "Weapon"){
+        if(other.tag == "Weapon" || other.tag == "Shop"){
             nearObject = other.gameObject;
         }
-
     }
 
     void OnTriggerExit(Collider other) {
         if(other.tag == "Weapon"){
+            nearObject = null;
+        }
+        else if (other.tag == "Shop"){
+            Shop shop = nearObject.GetComponent<Shop>();
+            shop.Exit();
+            isShop = false;
             nearObject = null;
         }
     }
