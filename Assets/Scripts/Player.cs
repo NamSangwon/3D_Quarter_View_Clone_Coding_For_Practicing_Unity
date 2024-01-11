@@ -9,6 +9,8 @@ using UnityEngine.Timeline;
 
 public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate = 관성에 의한 회전 방지
 {
+    public GameManager manager;
+
     public float moveSpeed;
     public float jumpPower;
 
@@ -48,6 +50,7 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
     bool isBorder;
     bool isDamage;
     bool isShop;
+    bool isDead;
 
     Vector3 moveVec;
     Vector3 dodgeVec;
@@ -65,7 +68,7 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
         rigid = GetComponent<Rigidbody>();
         meshes = GetComponentsInChildren<MeshRenderer>();
 
-        PlayerPrefs.SetInt("MaxScore", 112500);
+        PlayerPrefs.SetInt("MaxScore", 0);
     }
 
     // Start is called before the first frame update
@@ -109,7 +112,7 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
         if(isDodge) // 회피 시 이동 방향 변경 불가
             moveVec = dodgeVec;
 
-        if (isSwap || !isFireReady || isReload) // 무기 스왑 or 사용 or 재장전 시 이동 불가
+        if (isSwap || !isFireReady || isReload || isDead) // 무기 스왑 or 사용 or 재장전 시 이동 불가
             moveVec = Vector3.zero;
 
         if (!isBorder){        
@@ -129,7 +132,7 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
         transform.LookAt(transform.position + moveVec); // 나아가는 방향으로 플레이어 회전
 
         // 2. 마우스 클릭에 의한 플레이어 회전 (RayCastHit의 마우스 클릭 위치를 활용하여 회전을 구현)
-        if (fDown){
+        if (fDown && !isDead){
             Ray ray = followCamera.ScreenPointToRay(Input.mousePosition);
             RaycastHit rayHit;
             if(Physics.Raycast(ray, out rayHit, 100)){ // Raycast()를 통해 rayHit 값 업데이트
@@ -141,7 +144,7 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
     }
 
     void Jump(){ // jump = 움직이지 않을 때, 점프 (회피랑 연속 사용 불가)
-        if (jDown && moveVec == Vector3.zero && !isJump && !isDodge && !isSwap && !isShop){
+        if (jDown && moveVec == Vector3.zero && !isJump && !isDodge && !isSwap && !isShop && !isDead){
             rigid.AddForce(Vector3.up * jumpPower, ForceMode.Impulse); // 즉발적인 힘 = ForceMode.Impulse
             anim.SetBool("isJump", true);
             anim.SetTrigger("doJump");
@@ -157,7 +160,7 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
         if (ammo <= 0)
             return;
 
-        if(rDown && !isJump && !isDodge && !isSwap && isFireReady && !isShop){
+        if(rDown && !isJump && !isDodge && !isSwap && isFireReady && !isShop && !isDead){
             anim.SetTrigger("doReload");
             isReload = true;
             Invoke("ReloadOut", 3f);
@@ -175,7 +178,7 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
         if (hasGrenades <= 0)
             return;
 
-        if(gDown && !isReload && !isSwap && !isShop){
+        if(gDown && !isReload && !isSwap && !isShop && !isDead){
             Ray ray = followCamera.ScreenPointToRay(Input.mousePosition);
             RaycastHit rayHit;
             if(Physics.Raycast(ray, out rayHit, 100)){ // Raycast()를 통해 rayHit 값 업데이트
@@ -201,7 +204,7 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
         fireDelay += Time.deltaTime;
         isFireReady = equipWeapon.rate < fireDelay;
 
-        if (fDown && isFireReady && !isDodge && !isSwap && !isShop){
+        if (fDown && isFireReady && !isDodge && !isSwap && !isShop && !isDead){
             equipWeapon.Use();
             anim.SetTrigger(equipWeapon.attackType == Weapon.Type.Melee ? "doSwing" : "doShot");
             fireDelay = 0;
@@ -209,7 +212,7 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
     }
 
     void Dodge(){ // dodge = 움직일 땐, 회피 (점프랑 연속 사용 불가)
-        if (jDown && moveVec != Vector3.zero && !isDodge && !isJump && !isSwap && !isShop){
+        if (jDown && moveVec != Vector3.zero && !isDodge && !isJump && !isSwap && !isShop && !isDead){
             dodgeVec = moveVec;
             moveSpeed *= 2;
             anim.SetTrigger("doDodge");
@@ -238,7 +241,7 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
         if (sDown2) weaponIndex = 1;
         if (sDown3) weaponIndex = 2;
 
-        if((sDown1 || sDown2 || sDown3) && !isJump && !isDodge && !isShop){
+        if((sDown1 || sDown2 || sDown3) && !isJump && !isDodge && !isShop && !isDead){
             if (equipWeapon != null)
                 equipWeapon.gameObject.SetActive(false);
 
@@ -259,7 +262,7 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
     }
 
     void Interaction(){
-        if(iDown && nearObject != null && !isJump && !isDodge){
+        if(iDown && nearObject != null && !isJump && !isDodge && !isDead){
             if(nearObject.tag == "Weapon"){
                 Item item = nearObject.GetComponent<Item>();
                 int weaponIndex = item.value;
@@ -339,6 +342,9 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
         if (isBossAtk)
             rigid.AddForce(transform.forward * -25, ForceMode.Impulse);
 
+        if(health <= 0 && !isDead)
+            OnDie();
+
         yield return new WaitForSeconds(1f);
 
         isDamage = false;
@@ -348,6 +354,12 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
 
         if (isBossAtk)
             rigid.velocity = Vector3.zero;
+    }
+
+    void OnDie(){
+        anim.SetTrigger("doDie");
+        isDead = true;
+        manager.GameOver();
     }
 
     void FreezeRotation(){ // 플레이어 물체 충돌 시 자동 회전 제어

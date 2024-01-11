@@ -10,13 +10,17 @@ using UnityEngine.UIElements;
 
 public class Enemy : MonoBehaviour
 {
+    public GameManager manager;
+
     public enum Type { A, B, C, D };
     public Type enemyType;
     public int maxHealth;
     public int curHealth;
+    public int score;
     public Transform target;
     public BoxCollider meleeArea;
     public GameObject bullet;
+    public GameObject[] coins;
     
     protected bool isChase;
     protected bool isAttack;
@@ -172,7 +176,28 @@ public class Enemy : MonoBehaviour
             isDead = true;
             isChase = false;
             nav.enabled = false;
-            anim.SetTrigger("doDie");
+            anim.SetTrigger("doDie"); 
+
+            // 코인 드랍 
+            Player player = target.GetComponent<Player>();
+            player.score += score;
+            int randomCoin = Random.Range(0, 3);
+            Instantiate(coins[randomCoin], transform.position, Quaternion.identity);
+
+            switch(enemyType){
+                case Type.A:
+                    manager.enemyCntA--;
+                    break;
+                case Type.B:
+                    manager.enemyCntB--;
+                    break;
+                case Type.C:
+                    manager.enemyCntC--;
+                    break;
+                case Type.D:
+                    manager.enemyCntD--;
+                    break;
+            }
 
             if (isGrenade){ // 수류탄으로 적 처치 후 처리
                 reactVec = reactVec.normalized;
@@ -189,8 +214,7 @@ public class Enemy : MonoBehaviour
                 rigid.AddForce(reactVec * 5, ForceMode.Impulse);
             }
 
-            if (enemyType != Type.D)
-                Destroy(gameObject, 4);
+            Destroy(gameObject, 4);
         }
     }
 }
