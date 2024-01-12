@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Unity.VisualScripting;
 using UnityEditor;
-using UnityEditor.TerrainTools;
 using UnityEngine;
 using UnityEngine.Timeline;
 
 public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate = 관성에 의한 회전 방지
 {
     public GameManager manager;
+
+    public AudioSource jumpSound; // 각 액션의 사운드 넣기 (점프 사운드의 예시)
 
     public float moveSpeed;
     public float jumpPower;
@@ -149,6 +150,8 @@ public class Player : MonoBehaviour // RigidBody -> Constraints -> Freeze Rotate
             anim.SetBool("isJump", true);
             anim.SetTrigger("doJump");
             isJump = true;
+
+            jumpSound.Play(); // 각 액션의 사운드 넣기 (점프 사운드의 예시)
         }
     }
 
