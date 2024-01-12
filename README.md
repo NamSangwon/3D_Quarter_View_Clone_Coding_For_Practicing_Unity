@@ -2,5 +2,5 @@
 
 ## Reference : https://www.youtube.com/playlist?list=PLO-mt5Iu5TeYkrBzWKuTCl6IUm_bA6BKy
 
-### 23/12/30 ~ 
+### 23/12/30 ~ 24/01/12
  
